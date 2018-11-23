@@ -2,13 +2,7 @@ let display = acs2016;
 var userData = [];
 let data;
 
-
-var Format = wNumb({
-  mark: '.',
-  decimals: 0,
-	thousand: ','
-});
-
+let years = [2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017];
 
 /* Custom filtering function which will filter data by concept and/or label*/
 $.fn.dataTable.ext.search.push(
@@ -112,6 +106,7 @@ $(document).ready(function() {
         selectedArea = "&for=place:" + selectedArea.match(/.....$/)
       }
 
+      let promisesArr = [];
 
        for(let i = 2010;i <= 2017;i++) {
          url = `https://api.census.gov/data/${i}/acs/acs1?` +
@@ -119,53 +114,22 @@ $(document).ready(function() {
                 `key=6bf6ebcdeb96c3c930719fbcd5c1a08d713eea35` //&for=state:*
          arr.push({url: url, year: i});
 
+         let foo = fetch(url)
+                    .then(resp => resp.json())
+                    .then(resp => {
+                      return {value: resp[1][1], moe: resp[1][2], year: i}
+                    });
+
+         promisesArr.push(foo);
+
       }
-
-      let acs2010 =
-        fetch(arr[0].url)
-          .then(resp =>resp.json())
-          .then(resp => resp[1]);
-
-      let acs2011 =
-        fetch(arr[1].url)
-          .then(resp =>resp.json())
-          .then(resp => resp[1]);
-
-      let acs2012 =
-        fetch(arr[2].url)
-          .then(resp =>resp.json())
-          .then(resp => resp[1]);
-
-      let acs2013 =
-        fetch(arr[3].url)
-          .then(resp =>resp.json())
-          .then(resp => resp[1]);
-
-      let acs2014 =
-          fetch(arr[4].url)
-            .then(resp =>resp.json())
-            .then(resp => resp[1]);
-
-      let acs2015 =
-          fetch(arr[5].url)
-            .then(resp =>resp.json())
-            .then(resp => resp[1]);
-
-      let acs2016 =
-          fetch(arr[6].url)
-            .then(resp =>resp.json())
-            .then(resp => resp[1]);
-
-      let acs2017 =
-          fetch(arr[7].url)
-            .then(resp =>resp.json())
-            .then(resp => resp[1]);
-
-
 
       let combined = { "acs2010":{}, "acs2011":{}, "acs2012":{}, "acs2013":{},  "acs2014":{}, "acs2015":{}, "acs2016":{}, "acs2017":{}};
 
-      Promise.all([ acs2010, acs2011, acs2012, acs2013, acs2014, acs2015, acs2016, acs2017]).then(values => {
+      Promise.all(promisesArr).then(values => {
+
+        console.log(values[0])
+        console.log(values[1])
         combined["acs2010"] = values[0];
         combined["acs2011"] = values[1];
         combined["acs2012"] = values[2];
@@ -174,20 +138,19 @@ $(document).ready(function() {
         combined["acs2015"] = values[5];
         combined["acs2016"] = values[6];
         combined["acs2017"] = values[7];
-
         return combined
       }).then(combined => {
 
 
         let errorArray = [
-            combined.acs2010[2],
-            combined.acs2011[2],
-            combined.acs2012[2],
-            combined.acs2013[2],
-            combined.acs2014[2],
-            combined.acs2015[2],
-            combined.acs2016[2],
-            combined.acs2017[2]];
+            combined.acs2010.moe,
+            combined.acs2011.moe,
+            combined.acs2012.moe,
+            combined.acs2013.moe,
+            combined.acs2014.moe,
+            combined.acs2015.moe,
+            combined.acs2016.moe,
+            combined.acs2017.moe];
 
         errorArray = errorArray.map(x => {
           let int = parseInt(x)
@@ -197,17 +160,18 @@ $(document).ready(function() {
             return x;
           }
         })
-        console.log(errorArray)
+
+
         let trace = {
           x: [2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017],
-          y: [combined.acs2010[1],
-              combined.acs2011[1],
-              combined.acs2012[1],
-              combined.acs2013[1],
-              combined.acs2014[1],
-              combined.acs2015[1],
-              combined.acs2016[1],
-              combined.acs2017[1]],
+          y: [combined.acs2010.value,
+              combined.acs2011.value,
+              combined.acs2012.value,
+              combined.acs2013.value,
+              combined.acs2014.value,
+              combined.acs2015.value,
+              combined.acs2016.value,
+              combined.acs2017.value],
           name: "estimate",
           mode: "lines",
           type: "scatter",
@@ -255,14 +219,14 @@ $(document).ready(function() {
         /* Uncomment for continuous error bars
 
         let dataArray = [
-            {data: combined.acs2010[1], error: combined.acs2010[2]},
-            {data: combined.acs2011[1], error: combined.acs2011[2]},
-            {data: combined.acs2012[1], error: combined.acs2012[2]},
-            {data: combined.acs2013[1], error: combined.acs2013[2]},
-            {data: combined.acs2014[1], error: combined.acs2014[2]},
-            {data: combined.acs2015[1], error: combined.acs2015[2]},
-            {data: combined.acs2016[1], error: combined.acs2016[2]},
-            {data: combined.acs2017[1], error: combined.acs2017[2]}
+            {data: combined.acs2010.value, error: combined.acs2010.error},
+            {data: combined.acs2011.value, error: combined.acs2011.error},
+            {data: combined.acs2012.value, error: combined.acs2012.error},
+            {data: combined.acs2013.value, error: combined.acs2013.error},
+            {data: combined.acs2014.value, error: combined.acs2014.error},
+            {data: combined.acs2015.value, error: combined.acs2015.error},
+            {data: combined.acs2016.value, error: combined.acs2016.error},
+            {data: combined.acs2017.value, error: combined.acs2017.error}
         ]
 
         let errorArray = dataArray.map(x => {
