@@ -1,0 +1,87 @@
+body{
+  margin: auto;
+}
+header{
+  color: black;
+  grid-area: header;
+  display: flex;
+  height: 10vh;
+  background-color: hsl(202,50%,60%);
+  z-index: 2;
+  align-items: center;
+  justify-content: space-between;
+  padding-left: 10px;
+  min-height: 50px;
+  width: 100vw;
+  }
+
+#logo{
+  align-self: flex-end;
+  height: 75px;
+  max-height: 8vh;
+  padding-right: 30px;
+
+  min-height: 40px;
+  }
+
+.plot-container {
+  max-width: 90vw;
+  background-color: black;
+}
+
+#variable-list {
+  margin: auto;
+  max-width: 1003px;
+}
+
+table {
+  margin: 10px;
+}
+
+.filter {
+  padding: 10px;
+  width: 250px;
+}
+
+.geo-select{
+  width: 274px !important;
+}
+
+.var-filters {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  margin: auto;
+  max-width: 1003px;
+  padding: 10px;
+}
+
+#api-error{
+  font-weight: bold;
+  position: absolute;
+  color: red;
+  top: 210px;
+  width: 100%;
+  text-align: center;
+  z-index: 100;
+  background-color: rgba(0, 0, 0, 0.1);
+}
+
+#reload{
+  font-weight: bold;
+  position: absolute;
+  top: 270px;
+  left: 45%;
+  text-align: center;
+  z-index: 100;
+}
+
+#chart {
+  z-index: 99;
+  max-width: 1003px;
+  margin: auto;
+}
+#table_wrapper {
+  max-width: 1003px;
+  margin: auto;
+}
