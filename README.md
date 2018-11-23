@@ -18,4 +18,4 @@ A javascript application to create timeseries data from the American Community S
 - [ ] Create option for user to remove error bars
 - [ ] Create option for user to draw continuous error bars
 
-* maybe
+\* maybe
