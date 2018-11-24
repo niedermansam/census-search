@@ -2,6 +2,43 @@ let display = acs2016;
 var userData = [];
 let data;
 
+let percentFormat = wNumb({
+  decimals: 2,
+  suffix: '%'
+})
+
+let milFormat = wNumb({
+  mark: '.',
+  thousand: ',',
+  decimals: 2,
+  encoder: function( value ){
+			return value / 1000000;
+		},
+  decoder:  function( value ){
+			return value * 1000000;
+		},
+    suffix: 'M'
+})
+
+let thousandFormat = wNumb({
+  mark: '.',
+  thousand: ',',
+  decimals: 2,
+  encoder: function( value ){
+			return value / 1000;
+		},
+  decoder:  function( value ){
+			return value * 1000;
+		},
+    suffix: 'K'
+})
+
+let noFormat = wNumb({
+  mark: '.',
+  thousand: ',',
+  decimals: 0,
+})
+
 let years = [2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017];
 
 /* Custom filtering function which will filter data by concept and/or label*/
@@ -88,90 +125,169 @@ $(document).ready(function() {
         return;
       }
 
-      let arr=[];
+      // Hide error bar and reload button
       document.querySelector('#api-error').style.display = "none";
       document.querySelector('#reload').style.display = "none";
 
+      // Get fips codes for state/place from user input
       selectedState = document.querySelector('#state-list').value;
       selectedArea = document.querySelector('#area-list').value;
 
+      // handle selected state
       if(selectedState != 'us'){
-        selectedState = "&for=state:" + selectedState;
+        selectedState = "&for=state:" + selectedState; // handle request for a single state
       } else {
-          selectedState = "&for=" + selectedState;
+          selectedState = "&for=" + selectedState; // handle special case of full US request
       }
 
       if(selectedArea != ""){
-        selectedState = "&in=state:" + selectedArea.match(/^../)
-        selectedArea = "&for=place:" + selectedArea.match(/.....$/)
+        selectedState = "&in=state:" + selectedArea.match(/^../) // add state if user includes filter
+        selectedArea = "&for=place:" + selectedArea.match(/.....$/) // add place if user includes filter
       }
 
+      // Make API calls to gather ACS data
       let promisesArr = [];
 
-       for(let i = 2010;i <= 2017;i++) {
+       for(let i of years) {
+         // compose url from user input
          url = `https://api.census.gov/data/${i}/acs/acs1?` +
                 `get=NAME,${getVar}E,${getVar}M${selectedArea}${selectedState}&` +
-                `key=6bf6ebcdeb96c3c930719fbcd5c1a08d713eea35` //&for=state:*
-         arr.push({url: url, year: i});
+                `key=6bf6ebcdeb96c3c930719fbcd5c1a08d713eea35`
 
-         let foo = fetch(url)
+         // Make API calls for each year in array
+         let api_call = fetch(url)
                     .then(resp => resp.json())
                     .then(resp => {
-                      return {value: resp[1][1], moe: resp[1][2], year: i}
+                      return {value: resp[1][1], moe: resp[1][2], year: i} // collect data into object
                     });
 
-         promisesArr.push(foo);
+         promisesArr.push(api_call);
 
       }
 
-      let combined = { "acs2010":{}, "acs2011":{}, "acs2012":{}, "acs2013":{},  "acs2014":{}, "acs2015":{}, "acs2016":{}, "acs2017":{}};
-
+      // Code to run once all API calls have been made
       Promise.all(promisesArr).then(values => {
 
-        console.log(values[0])
-        console.log(values[1])
-        combined["acs2010"] = values[0];
-        combined["acs2011"] = values[1];
-        combined["acs2012"] = values[2];
-        combined["acs2013"] = values[3];
-        combined["acs2014"] = values[4];
-        combined["acs2015"] = values[5];
-        combined["acs2016"] = values[6];
-        combined["acs2017"] = values[7];
-        return combined
-      }).then(combined => {
 
 
-        let errorArray = [
-            combined.acs2010.moe,
-            combined.acs2011.moe,
-            combined.acs2012.moe,
-            combined.acs2013.moe,
-            combined.acs2014.moe,
-            combined.acs2015.moe,
-            combined.acs2016.moe,
-            combined.acs2017.moe];
 
-        errorArray = errorArray.map(x => {
-          let int = parseInt(x)
-          if (int < 0){
-            return 0;
+        // Create error array
+        let errorArray = values.map(x => {
+          let int = parseInt(x.moe)
+          // correct "Estimate Total" variable by replacing negative errors with 0
+          if (int < 0){ return 0; } else { return int; }
+        });
+
+        // Create array of estimates
+        let estimateArray = values.map(x => x.value)
+
+
+        document.querySelector('#output-data').innerHTML = "";
+
+        out_df = document.createElement("TABLE");
+        year = document.createElement('tr');
+        est = document.createElement('tr');
+        moe = document.createElement('tr');
+        change = document.createElement('tr');
+        total_change = document.createElement('tr');
+        out_df.appendChild(year);
+        out_df.appendChild(est);
+        out_df.appendChild(moe);
+        out_df.appendChild(change);
+        out_df.appendChild(total_change);
+
+        function getMagnitude(num) {
+          let est_formatted;
+          let est_label;
+
+          if( Math.abs(parseInt(num)) >= 1000000){
+            est_formatted = milFormat.to(parseInt(num));
+            est_label = "(in Millions)"
+          } else if ( Math.abs(parseInt(num)) >= 10000 ) {
+            est_formatted = thousandFormat.to(parseInt(num));
+            est_label = "(in Thousands)"
           } else {
-            return x;
+            est_formatted = noFormat.to(parseInt(num));
+            est_label = ""
           }
+
+          return est_formatted;
+        }
+
+        let label = getMagnitude(values[0].value).label;
+
+        year.innerHTML = `<td class = "data-label"><strong>Year:</strong></td>`;
+        est.innerHTML = `<td class = "data-label"><strong>Estimate:</strong></td>`;
+        change.innerHTML = `<td class = "data-label"><strong>Year-on-Year Change:</strong></td>`;
+        moe.innerHTML = `<td class = "data-label"><strong>Margin of Error:</strong></td>`;
+        total_change.innerHTML = `<td class = "data-label"><strong>Total Change (from 2010):</strong></td>`;
+
+
+        // Calculate yearly percent change
+        var diffs = [];
+        var previousYearVal;
+        estimateArray.map(function(yearVal) {
+            if(previousYearVal){
+              let tot = ( yearVal - previousYearVal );
+              let val = ( ( tot / previousYearVal) * 100);
+              val = percentFormat.to(val);
+              diffs.push({total: tot, percent: val});
+            }
+            previousYearVal = yearVal;
+        });
+
+        diffs.unshift({total: "NA", percent: "NA"})
+
+        let total_diffs = []
+        estimateArray.map(yearVal => {
+          let tot = ( yearVal - values[0].value );
+          let val = (tot / values[0].value) * 100;
+          val = percentFormat.to(val);
+          total_diffs.push({total: tot, percent: val});
         })
 
 
+        for(let data of values){
+          date = document.createElement('td');
+          date.innerHTML = `<strong>${data.year}</strong>`;
+          year.appendChild(date);
+
+          estimate = document.createElement('td');
+          estimate.innerHTML = getMagnitude(data.value);
+          est.appendChild(estimate);
+
+          margin = document.createElement('td');
+          margin.innerHTML = `&#177;${getMagnitude(data.moe)} <br> (${percentFormat.to((data.moe/data.value) * 100)})`;
+          moe.appendChild(margin);
+
+          pct_chg = document.createElement('td');
+          let year_temp = diffs.shift()
+          if (year_temp.total != "NA"){
+          pct_chg.innerHTML = ` ${getMagnitude(year_temp.total)} <br> (${year_temp.percent})`;
+        } else {pct_chg.innerHTML = 'NA'}
+          change.appendChild(pct_chg);
+
+          tot_chg = document.createElement('td');
+          let total_temp = total_diffs.shift()
+          tot_chg.innerHTML = `${getMagnitude(total_temp.total)} <br> (${total_temp.percent})`;
+          total_change.appendChild(tot_chg);
+
+          //console.log(total_diffs.shift().percent)
+
+        }
+
+
+
+
+        document.querySelector('#output-data').appendChild(out_df)
+
+
+
+
+        // Define line to be traced with plotly
         let trace = {
-          x: [2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017],
-          y: [combined.acs2010.value,
-              combined.acs2011.value,
-              combined.acs2012.value,
-              combined.acs2013.value,
-              combined.acs2014.value,
-              combined.acs2015.value,
-              combined.acs2016.value,
-              combined.acs2017.value],
+          x: years,
+          y: estimateArray,
           name: "estimate",
           mode: "lines",
           type: "scatter",
@@ -182,22 +298,24 @@ $(document).ready(function() {
           }
         };
 
+        // Get geographic data from user input
         let stateDisp = document.querySelector('#state-list').options[document.querySelector('#state-list').selectedIndex].innerHTML.replace(/<[^>]*>/g,"");
         let areaDisp = document.querySelector('#area-list').options[document.querySelector('#area-list').selectedIndex].innerHTML.replace(/<[^>]*>/g,"");
 
+
+        // create title for graph
         let selectedLocation;
-
-
+        // Use state filter if no urban area specified
         if (areaDisp == "No Filter"| areaDisp == ""){
           selectedLocation = stateDisp;
-        } else {
-          selectedLocation = areaDisp;
-        }
+        } else { selectedLocation = areaDisp; }  // if urban area specified, use that
 
+        // Make the title a little more gramatically correct...
         if (selectedLocation == "United States") {
           selectedLocation = "the " + selectedLocation
         }
 
+        // Define layout, title, ect.
         let layout = {
           title: `Estimated ${data.concept.replace('Sex By Age', 'Population')}: <br> ${data.label.replace("Estimate ","")} in ${selectedLocation}`,
           xaxis: {
@@ -205,15 +323,13 @@ $(document).ready(function() {
           }
         }
 
-        document.querySelector('.loader').style.display = "none";
+        document.querySelector('.loader').style.display = "none";  // hide laoder
 
-        Plotly.newPlot('chart', [trace], layout, {responsive: true})
+        Plotly.newPlot('chart', [trace], layout, {responsive: true}) // draw the plot
 
         try {
-            document.querySelector('.plot-container').style.opacity = '1';
-        } catch (e) {
-
-        }
+            document.querySelector('.plot-container').style.opacity = '1'; // show the plot
+        } catch (e) { }
 
 
         /* Uncomment for continuous error bars
@@ -321,6 +437,7 @@ $(document).ready(function() {
 
 
       }).catch(error => {
+        // get user input from filters
         let stateDisp = document.querySelector('#state-list').options[document.querySelector('#state-list').selectedIndex].innerHTML.replace(/<[^>]*>/g,"");
         let areaDisp = document.querySelector('#area-list').options[document.querySelector('#area-list').selectedIndex].innerHTML.replace(/<[^>]*>/g,"");
 
@@ -334,12 +451,14 @@ $(document).ready(function() {
         }
 
           console.log(error.message)
+
+          // create informative error message
           document.querySelector('#api-error').innerHTML =
             `Sorry, <em>"${data.label}"</em> for <em>${selectedLocation}</em> didn't load correctly.` +
             ` Please try again. <br>`;
-          document.querySelector('#api-error').style.display = "";
-          document.querySelector('#reload').style.display = "";
-          document.querySelector('.loader').style.display = "none";
+          document.querySelector('#api-error').style.display = "";  // show error bar
+          document.querySelector('#reload').style.display = "";     // show reload button
+          document.querySelector('.loader').style.display = "none"; // hide loading icon
         });
 
    }

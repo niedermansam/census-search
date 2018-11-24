@@ -1,5 +1,6 @@
 body{
   margin: auto;
+  font-family: sans-serif;
 }
 header{
   color: black;
@@ -34,8 +35,22 @@ header{
   max-width: 1003px;
 }
 
-table {
-  margin: 10px;
+#output-data > table {
+  margin: auto;
+}
+
+#output-data > table > tr > td {
+  padding: 7px 7px 7px 7px;
+  text-align: right;
+  font-size: .9rem;
+}
+
+#output-data {
+  padding-bottom: 40px;
+}
+
+.data-label {
+  text-align: left !important;
 }
 
 .filter {
