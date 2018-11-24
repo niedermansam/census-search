@@ -1,10 +1,29 @@
 let display = acs2016;
-var userData = [];
 let data;
+
+
+
+function hideReload() {
+  document.querySelector('#reload').style.display = "none";
+}
+
+function hideLoader() {
+  document.querySelector('.loader').style.display = "none";
+}
+
+function setPlotOpacity(opacity){
+try {
+    document.querySelector('.plot-container').style.opacity = opacity.toString();
+} catch (e) { }
+}
 
 let percentFormat = wNumb({
   decimals: 2,
   suffix: '%'
+})
+
+let round2 = wNumb({
+  decimals: 2
 })
 
 let milFormat = wNumb({
@@ -45,11 +64,11 @@ let years = [2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017];
 $.fn.dataTable.ext.search.push(
     function( settings, data, dataIndex ) {
 
-        var labelFilter = $('#label').val().toProperCase();
-        var label = data[1]
+        let labelFilter = $('#label').val().toProperCase();
+        let label = data[1]
 
-        var conceptFilter = $('#concept').val().toProperCase();
-        var concept = data[2];
+        let conceptFilter = $('#concept').val().toProperCase();
+        let concept = data[2];
 
         if (
             ( !labelFilter && !conceptFilter ) ||
@@ -64,11 +83,16 @@ $.fn.dataTable.ext.search.push(
     }
 );
 
-document.querySelector('#reload').style.display = "none";
+  hideReload();
 
 $(document).ready(function() {
 
-  document.querySelector('.loader').style.display = "none"
+  document.querySelectorAll('.hidden').forEach(div => {
+    console.log(div)
+    div.classList.remove('hidden');
+  })
+
+  hideLoader();
 
     display.map(d => {
       d.label = d.label.replace(/!!/g," ").toProperCase();
@@ -108,26 +132,23 @@ $(document).ready(function() {
     function drawGraph() {
 
       document.querySelector('.loader').style.display = "";
+      document.querySelector('#output-data').innerHTML = "";
       let foo = table.$('tr.selected')
 
-      try {
-          document.querySelector('.plot-container').style.opacity = '0';
-      } catch (e) {
-
-      }
+      setPlotOpacity(0);
 
       let getVar;
 
       try {
         getVar = foo[0].getElementsByTagName('td')[0].innerHTML;
       } catch (e) {
-        document.querySelector('.loader').style.display = "none";
+        hideLoader();
         return;
       }
 
       // Hide error bar and reload button
       document.querySelector('#api-error').style.display = "none";
-      document.querySelector('#reload').style.display = "none";
+      hideReload();
 
       // Get fips codes for state/place from user input
       selectedState = document.querySelector('#state-list').value;
@@ -141,35 +162,40 @@ $(document).ready(function() {
       }
 
       if(selectedArea != ""){
-        selectedState = "&in=state:" + selectedArea.match(/^../) // add state if user includes filter
+        selectedState = "&in=state:" + selectedArea.match(/^../) // add state if user includes state filter
         selectedArea = "&for=place:" + selectedArea.match(/.....$/) // add place if user includes filter
       }
 
       // Make API calls to gather ACS data
+      // create array to handle with Promise.All later
       let promisesArr = [];
 
+      // loop through years object
        for(let i of years) {
+
          // compose url from user input
          url = `https://api.census.gov/data/${i}/acs/acs1?` +
                 `get=NAME,${getVar}E,${getVar}M${selectedArea}${selectedState}&` +
                 `key=6bf6ebcdeb96c3c930719fbcd5c1a08d713eea35`
 
-         // Make API calls for each year in array
-         let api_call = fetch(url)
-                    .then(resp => resp.json())
-                    .then(resp => {
-                      return {value: resp[1][1], moe: resp[1][2], year: i} // collect data into object
-                    });
+        // Make API calls for each year in array
+        let api_call =
+                fetch(url)
+                  .then(resp => resp.json()) // return json
+                  .then(resp => {
+                     // collect data into object
+                    return {value: resp[1][1],
+                      moe: resp[1][2], year: i
+                    }
+                  });
 
-         promisesArr.push(api_call);
+        // push promise object to promise array
+        promisesArr.push(api_call);
 
       }
 
       // Code to run once all API calls have been made
       Promise.all(promisesArr).then(values => {
-
-
-
 
         // Create error array
         let errorArray = values.map(x => {
@@ -180,9 +206,6 @@ $(document).ready(function() {
 
         // Create array of estimates
         let estimateArray = values.map(x => x.value)
-
-
-        document.querySelector('#output-data').innerHTML = "";
 
         out_df = document.createElement("TABLE");
         year = document.createElement('tr');
@@ -203,7 +226,7 @@ $(document).ready(function() {
           if( Math.abs(parseInt(num)) >= 1000000){
             est_formatted = milFormat.to(parseInt(num));
             est_label = "(in Millions)"
-          } else if ( Math.abs(parseInt(num)) >= 10000 ) {
+          } else if ( Math.abs(parseInt(num)) >= 1000 ) {
             est_formatted = thousandFormat.to(parseInt(num));
             est_label = "(in Thousands)"
           } else {
@@ -214,8 +237,6 @@ $(document).ready(function() {
           return est_formatted;
         }
 
-        let label = getMagnitude(values[0].value).label;
-
         year.innerHTML = `<td class = "data-label"><strong>Year:</strong></td>`;
         est.innerHTML = `<td class = "data-label"><strong>Estimate:</strong></td>`;
         change.innerHTML = `<td class = "data-label"><strong>Year-on-Year Change:</strong></td>`;
@@ -224,16 +245,16 @@ $(document).ready(function() {
 
 
         // Calculate yearly percent change
-        var diffs = [];
-        var previousYearVal;
+        let diffs = [];
+        let previousVal;
         estimateArray.map(function(yearVal) {
-            if(previousYearVal){
-              let tot = ( yearVal - previousYearVal );
-              let val = ( ( tot / previousYearVal) * 100);
+            if(previousVal){
+              let tot = ( yearVal - previousVal );
+              let val = ( ( tot / previousVal) * 100);
               val = percentFormat.to(val);
               diffs.push({total: tot, percent: val});
             }
-            previousYearVal = yearVal;
+            previousVal = yearVal;
         });
 
         diffs.unshift({total: "NA", percent: "NA"})
@@ -246,31 +267,52 @@ $(document).ready(function() {
           total_diffs.push({total: tot, percent: val});
         })
 
+        function makeCell() {
+          return document.createElement('td');
+        }
 
         for(let data of values){
-          date = document.createElement('td');
+          date = makeCell();
           date.innerHTML = `<strong>${data.year}</strong>`;
           year.appendChild(date);
 
-          estimate = document.createElement('td');
-          estimate.innerHTML = getMagnitude(data.value);
+          estimate = makeCell();
+          estimate.innerHTML = noFormat.to(parseInt(data.value));
           est.appendChild(estimate);
 
-          margin = document.createElement('td');
-          margin.innerHTML = `&#177;${getMagnitude(data.moe)} <br> (${percentFormat.to((data.moe/data.value) * 100)})`;
+          margin = makeCell();
+          margin.innerHTML = `<tbody><tr><td>&#177;${noFormat.to(parseInt(data.moe))}</td><br><td>(${Math.round((data.moe/data.value*100)*100)/100}%)</td></tr></tbody>`;
           moe.appendChild(margin);
 
-          pct_chg = document.createElement('td');
+          pct_chg = makeCell();
           let year_temp = diffs.shift()
           if (year_temp.total != "NA"){
-          pct_chg.innerHTML = ` ${getMagnitude(year_temp.total)} <br> (${year_temp.percent})`;
+          pct_chg.innerHTML = `<tbody><tr><td>${noFormat.to(parseInt(year_temp.total))}</td><br><td>(${year_temp.percent})</td></tr></tbody>`;
         } else {pct_chg.innerHTML = 'NA'}
+
+
+        if(Math.abs(year_temp.total) < parseInt(data.moe)) {
+          pct_chg.style.color= 'black';
+        } else if (year_temp.total > 0) {
+            pct_chg.style.color= 'green';
+        } else if (year_temp.total < 0) {
+          pct_chg.style.color= 'red';
+        } else {pct_chg.style.color= 'black'}
+
           change.appendChild(pct_chg);
 
-          tot_chg = document.createElement('td');
+          tot_chg =  makeCell();
           let total_temp = total_diffs.shift()
-          tot_chg.innerHTML = `${getMagnitude(total_temp.total)} <br> (${total_temp.percent})`;
+          tot_chg.innerHTML = `<tbody><tr><td>${noFormat.to(parseInt(total_temp.total))}</td><br><td>(${total_temp.percent})</td></tr></tbody>`;
           total_change.appendChild(tot_chg);
+
+          if(Math.abs(total_temp.total) < parseInt(values[0].moe)) {
+            tot_chg.style.color= 'black';
+          } else if (total_temp.total > 0) {
+              tot_chg.style.color= 'green';
+          } else if (total_temp.total < 0) {
+            tot_chg.style.color= 'red';
+          } else {tot_chg.style.color= 'black'}
 
           //console.log(total_diffs.shift().percent)
 
@@ -280,8 +322,6 @@ $(document).ready(function() {
 
 
         document.querySelector('#output-data').appendChild(out_df)
-
-
 
 
         // Define line to be traced with plotly
@@ -294,13 +334,17 @@ $(document).ready(function() {
           error_y: {
             type: 'data',
             array: errorArray,
-                visible: true
+            visible: true
           }
         };
 
+        function getFilterInput(str) {
+          return document.querySelector(str).options[document.querySelector(str).selectedIndex].innerHTML.replace(/<[^>]*>/g,"");
+        }
+
         // Get geographic data from user input
-        let stateDisp = document.querySelector('#state-list').options[document.querySelector('#state-list').selectedIndex].innerHTML.replace(/<[^>]*>/g,"");
-        let areaDisp = document.querySelector('#area-list').options[document.querySelector('#area-list').selectedIndex].innerHTML.replace(/<[^>]*>/g,"");
+        let stateDisp = getFilterInput('#state-list');
+        let areaDisp = getFilterInput('#area-list');
 
 
         // create title for graph
@@ -323,13 +367,11 @@ $(document).ready(function() {
           }
         }
 
-        document.querySelector('.loader').style.display = "none";  // hide laoder
+        hideLoader();  // hide laoder
 
         Plotly.newPlot('chart', [trace], layout, {responsive: true}) // draw the plot
 
-        try {
-            document.querySelector('.plot-container').style.opacity = '1'; // show the plot
-        } catch (e) { }
+        setPlotOpacity(1); // show plot
 
 
         /* Uncomment for continuous error bars
@@ -458,7 +500,7 @@ $(document).ready(function() {
             ` Please try again. <br>`;
           document.querySelector('#api-error').style.display = "";  // show error bar
           document.querySelector('#reload').style.display = "";     // show reload button
-          document.querySelector('.loader').style.display = "none"; // hide loading icon
+          hideLoader(); // hide loading icon
         });
 
    }

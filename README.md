@@ -17,6 +17,7 @@ A javascript application to visualize data from the American Community Survey. C
 - [x] Calculate percent change (output in table)
 
 ## Eventual Goals
+- [ ] Include summary variable option
 - [ ] Allow user to select summary variable*
 - [ ] Create option for user to remove error bars
 - [ ] Create option for user to draw continuous error bars
@@ -25,6 +26,6 @@ A javascript application to visualize data from the American Community Survey. C
 - [ ] Access information about variable comparability (show warning if variables not comparable)
 - [ ] Allow user to switch between the ACS 5 year and 1 year estimates
 - [ ] Allows user to filter by county when searching in 5 year estimates
-- [ ] Allow user to filter geography with map
+- [ ] Allow user to filter geography with map*
 
 \* maybe
