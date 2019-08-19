@@ -1,6 +1,6 @@
-let display = acs2016;
+let display = acs2016; // Import variables from data/acs-2016-variables.js
 let data;
-
+const CENSUS_KEY = "" // INSERT CENSUS KEY HERE
 
 
 function hideReload() {
@@ -176,7 +176,7 @@ $(document).ready(function() {
          // compose url from user input
          url = `https://api.census.gov/data/${i}/acs/acs1?` +
                 `get=NAME,${getVar}E,${getVar}M${selectedArea}${selectedState}&` +
-                `key=6bf6ebcdeb96c3c930719fbcd5c1a08d713eea35`
+                `key=${CENSUS_KEY}`
 
         // Make API calls for each year in array
         let api_call =
@@ -511,6 +511,3 @@ $(document).ready(function() {
     $('#area-list').change(drawGraph)
     $('#reload').click(drawGraph)
 });
-
-// Census API call
-// https://api.census.gov/data/2013/acs1?get=NAME,B02015_009E,B02015_009M&for=state:*&key=a769fc5759255ab9b72ff689b5de8c250249a7be
